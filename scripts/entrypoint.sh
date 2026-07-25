@@ -1139,12 +1139,20 @@ apps = load_artifact_apps(sys.argv[1])
 # Core test framework (wiped from SQL, need republish) + test toolkit
 # apps that aren't in the sandbox DB but most test apps depend on.
 # This list rarely changes — last change was ~5 years ago.
-NAMES = {
-    "Test Runner", "Library Assert", "Library Variable Storage",
-    "Permissions Mock", "Any",
-    "System Application Test Library", "Business Foundation Test Libraries",
-    "Tests-TestLibraries",
-}
+# Publish ALL test apps — anything that looks like a test suite.
+# This covers Tests-SINGLESERVER, Tests-ERM, Tests-Misc, Tests-SCM, etc.
+# Skip _Exclude_* apps (they are opt-out markers, not real tests).
+NAMES = set()
+for aid, info in apps.items():
+    name = info.get("name", "")
+    if name.startswith("_Exclude_"):
+        continue
+    if name.startswith("Tests-") or name.endswith("Tests") or name.endswith("-Tests") \
+        or name.endswith(" Test") or " Test Library" in name \
+        or " Test Toolkit" in name or "Test Runner" in name \
+        or "Library Assert" in name or "Library Variable Storage" in name \
+        or "Permissions Mock" in name or name == "Any":
+        NAMES.add(name)
 by_name = {}
 for aid, info in apps.items():
     if info.get("name") in NAMES:
