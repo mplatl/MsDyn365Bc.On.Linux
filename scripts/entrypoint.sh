@@ -124,7 +124,9 @@ if [ ! -f "$SERVICE_DIR/Microsoft.Dynamics.Nav.Server.dll" ]; then
         -e "s|SOAPServicesPort\" value=\"[^\"]*\"|SOAPServicesPort\" value=\"7047\"|" \
         -e "s|ODataServicesPort\" value=\"[^\"]*\"|ODataServicesPort\" value=\"7048\"|" \
         -e "s|ManagementServicesPort\" value=\"[^\"]*\"|ManagementServicesPort\" value=\"7045\"|" \
+        -e "s|ManagementServicesEnabled\" value=\"[^\"]*\"|ManagementServicesEnabled\" value=\"false\"|" \
         -e "s|ManagementApiServicesPort\" value=\"[^\"]*\"|ManagementApiServicesPort\" value=\"7086\"|" \
+        -e "s|ManagementApiServicesEnabled\" value=\"[^\"]*\"|ManagementApiServicesEnabled\" value=\"false\"|" \
         -e "s|DeveloperServicesPort\" value=\"[^\"]*\"|DeveloperServicesPort\" value=\"7049\"|" \
         -e "s|ServerInstance\" value=\"[^\"]*\"|ServerInstance\" value=\"BC\"|" \
         -e "s|ExtensionAllowedTargetLevel\" value=\"[^\"]*\"|ExtensionAllowedTargetLevel\" value=\"OnPrem\"|" \
@@ -171,6 +173,17 @@ for stub in OpenTelemetry.Exporter.Geneva.dll Microsoft.Data.SqlClient.dll; do
     fi
 done
 
+# Disable ManagementApi services to prevent S2S AAD validation error in AdminApiHost.
+# BC 28.x ships Microsoft.IdentityModel.S2S.Configuration.dll which requires AAD
+# inbound policy configuration. On Linux without AAD, the AdminApiStartup fails.
+# Instead of deleting the DLL (which breaks tenant setup), disable these services.
+if grep -q 'ManagementServicesEnabled' "$CONFIG"; then
+    sed -i 's|ManagementServicesEnabled" value="[^"]*"|ManagementServicesEnabled" value="false"|' "$CONFIG"
+fi
+if grep -q 'ManagementApiServicesEnabled' "$CONFIG"; then
+    sed -i 's|ManagementApiServicesEnabled" value="[^"]*"|ManagementApiServicesEnabled" value="false"|' "$CONFIG"
+fi
+log_step "Disabled ManagementApi services (AdminApi AAD workaround)"
 # Create Win32 DLL symlinks in the service directory and .NET runtime dir.
 # The StartupHook's ResolvingUnmanagedDll only fires on the Default ALC, but
 # compiled AL extensions run in tenant ALCs. Native library search needs symlinks
